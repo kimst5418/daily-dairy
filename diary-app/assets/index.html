@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>나의 일기장</title>
+<script src="file:///android_asset/marked.min.js"></script>
+<style>
+:root{
+  --bg:#FAF3E7; --card:#FFFDF8; --ink:#5B4636; --sub:#A68B6F; --faint:#C9B49C;
+  --accent:#D97757; --accent-deep:#C05F3F; --accent-soft:#F6D9C4;
+  --line:#EFE2CC; --shadow:0 3px 14px rgba(91,70,54,0.10);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
+  font-family:'Noto Sans KR',sans-serif; font-size:16px;}
+.screen{display:none; min-height:100vh; padding:16px 16px 96px 16px; max-width:560px; margin:0 auto;}
+.screen.active{display:block;}
+h1.brand{font-family:'Noto Serif KR',serif; font-size:24px; margin:6px 0 2px 0; letter-spacing:1px;}
+.subtitle{color:var(--sub); font-size:13px; margin-bottom:14px;}
+.topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.iconbtn{border:none; background:var(--card); color:var(--ink); font-size:18px;
+  width:42px; height:42px; border-radius:14px; box-shadow:var(--shadow); cursor:pointer;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:18px;
+  box-shadow:var(--shadow); padding:14px; margin-bottom:14px;}
+/* ---- calendar ---- */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.cal-title{font-weight:bold; font-size:16px; font-family:'Noto Serif KR',serif;}
+.cal-nav{border:none; background:none; color:var(--accent); font-size:20px; padding:4px 12px; cursor:pointer;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center;}
+.cal-dow{font-size:11px; color:var(--sub); padding:4px 0;}
+.cal-dow.sun{color:#D07561;}
+.cal-cell{position:relative; padding:3px 0; border-radius:10px; font-size:13px;
+  min-height:40px; cursor:pointer; border:1px solid transparent;}
+.cal-cell .d{display:block; line-height:18px;}
+.cal-cell .m{display:block; font-size:13px; height:16px; line-height:16px;}
+.cal-cell .dot{display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--accent);}
+.cal-cell.today{background:var(--accent-soft);}
+.cal-cell.sel{border-color:var(--accent); background:#FBE9DC;}
+.cal-cell.dim{color:var(--faint);}
+/* ---- search ---- */
+.search{display:flex; align-items:center; background:var(--card); border:1px solid var(--line);
+  border-radius:14px; padding:10px 14px; box-shadow:var(--shadow); margin-bottom:14px;}
+.search input{border:none; outline:none; background:none; flex:1; font-size:15px; color:var(--ink);}
+.search input::placeholder{color:var(--faint);}
+.filter-note{display:flex; justify-content:space-between; align-items:center;
+  font-size:13px; color:var(--sub); margin:0 4px 10px 4px;}
+.filter-note button{border:none; background:none; color:var(--accent); font-size:13px; cursor:pointer;}
+/* ---- entry list ---- */
+.entry{background:var(--card); border:1px solid var(--line); border-radius:18px;
+  box-shadow:var(--shadow); padding:14px 16px; margin-bottom:12px; cursor:pointer;}
+.entry .date{font-size:12px; color:var(--sub); margin-bottom:4px;}
+.entry .title{font-weight:bold; font-size:16px; margin-bottom:4px; font-family:'Noto Serif KR',serif;}
+.entry .prev{font-size:13px; color:var(--sub); line-height:1.5; max-height:40px; overflow:hidden;}
+.entry .mood{float:right; font-size:20px; margin-left:8px;}
+.empty{ text-align:center; color:var(--sub); padding:36px 10px; font-size:14px; line-height:1.8;}
+.empty .big{font-size:34px; display:block; margin-bottom:6px;}
+/* ---- fab ---- */
+.fab{position:fixed; right:22px; bottom:26px; width:58px; height:58px; border-radius:50%;
+  border:none; background:var(--accent); color:#fff; font-size:26px; box-shadow:0 6px 16px rgba(192,95,63,.4);
+  cursor:pointer; z-index:5;}
+/* ---- editor / view ---- */
+.bar{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.bar .left{display:flex; align-items:center; gap:8px;}
+.btn{border:none; border-radius:14px; padding:11px 18px; font-size:15px; cursor:pointer;}
+.btn.primary{background:var(--accent); color:#fff; font-weight:bold;}
+.btn.ghost{background:var(--card); color:var(--ink); border:1px solid var(--line);}
+.btn.danger{background:#F3E1DB; color:#B04A32;}
+.btn.small{padding:8px 12px; font-size:13px; border-radius:10px;}
+input[type=date]{border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:12px; padding:10px 12px; font-size:15px; font-family:inherit;}
+.moods{display:flex; gap:6px; flex-wrap:wrap; margin:12px 0;}
+.mood-opt{font-size:22px; padding:6px 9px; border-radius:12px; border:1px solid var(--line);
+  background:var(--card); cursor:pointer;}
+.mood-opt.sel{background:var(--accent-soft); border-color:var(--accent);}
+.ttl{width:100%; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:12px; padding:12px 14px; font-size:17px; font-family:'Noto Serif KR',serif; outline:none;}
+.toolbar{display:flex; gap:6px; margin:10px 0; flex-wrap:wrap;}
+.tb{border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:10px;
+  padding:7px 11px; font-size:13px; cursor:pointer;}
+.tb.on{background:var(--accent-soft); border-color:var(--accent);}
+.live-label{font-size:12px; color:var(--sub); margin:12px 4px 6px 4px;}
+textarea.body{width:100%; min-height:34vh; border:1px solid var(--line); background:var(--card);
+  color:var(--ink); border-radius:14px; padding:14px; font-size:15px; line-height:1.7;
+  font-family:inherit; outline:none; resize:vertical;}
+.md{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; line-height:1.75; font-size:15px;}
+.md h1,.md h2,.md h3{font-family:'Noto Serif KR',serif; margin:14px 0 6px 0;}
+.md h1{font-size:20px;} .md h2{font-size:18px;} .md h3{font-size:16px;}
+.md blockquote{margin:8px 0; padding:6px 14px; border-left:3px solid var(--accent-soft); color:var(--sub);}
+.md code{background:#F4EBDB; border-radius:5px; padding:1px 5px; font-size:13px;}
+.md pre{background:#F4EBDB; border-radius:10px; padding:10px; overflow-x:auto;}
+.md img{max-width:100%; border-radius:10px;}
+.md hr{border:none; border-top:1px dashed var(--faint); margin:14px 0;}
+.view-date{color:var(--sub); font-size:13px; margin-bottom:2px;}
+.view-title{font-family:'Noto Serif KR',serif; font-size:22px; margin:2px 0 12px 0; font-weight:bold;}
+.view-mood{font-size:26px;}
+/* ---- lock ---- */
+#scr-lock{display:none; position:fixed; inset:0; background:var(--bg); z-index:50;
+  padding:0 28px; text-align:center;}
+#scr-lock.active{display:flex; flex-direction:column; justify-content:center; align-items:center;}
+#scr-lock .big{font-size:44px; margin-bottom:10px;}
+#scr-lock input{width:100%; max-width:280px; text-align:center; font-size:20px; letter-spacing:6px;
+  border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:14px;
+  padding:13px; outline:none; margin:14px 0;}
+.hint{color:var(--sub); font-size:13px; min-height:20px;}
+/* ---- settings ---- */
+.set-label{font-size:13px; color:var(--sub); margin:4px 0 8px 2px;}
+.set-row{margin-bottom:8px;}
+.set-row input, .set-row textarea{width:100%; border:1px solid var(--line); background:#FFFDF8;
+  color:var(--ink); border-radius:12px; padding:11px 13px; font-size:14px; outline:none; font-family:inherit;}
+.stat{display:flex; gap:10px;}
+.stat .box{flex:1; text-align:center; background:#FBF6EC; border-radius:14px; padding:12px 4px;}
+.stat .n{font-size:22px; font-weight:bold; color:var(--accent-deep); font-family:'Noto Serif KR',serif;}
+.stat .l{font-size:12px; color:var(--sub); margin-top:2px;}
+.notice{font-size:12px; color:var(--sub); line-height:1.6; margin-top:8px;}
+</style>
+</head>
+<body>
+
+<!-- 잠금 화면 -->
+<div id="scr-lock">
+  <div class="big">🔒</div>
+  <div style="font-family:'Noto Serif KR',serif; font-size:20px; font-weight:bold;">나의 일기장</div>
+  <input id="lock-pw" type="password" placeholder="비밀번호">
+  <button class="btn primary" style="width:100%; max-width:280px;" onclick="tryUnlock()">열기</button>
+  <div class="hint" id="lock-hint"></div>
+</div>
+
+<!-- 홈 -->
+<div class="screen" id="scr-home">
+  <div class="topbar">
+    <div>
+      <h1 class="brand">나의 일기장 <span style="font-size:18px;">🍑</span></h1>
+      <div class="subtitle" id="home-sub"></div>
+    </div>
+    <button class="iconbtn" onclick="go('settings')">⚙️</button>
+  </div>
+
+  <div class="card">
+    <div class="cal-head">
+      <button class="cal-nav" onclick="calMove(-1)">‹</button>
+      <div class="cal-title" id="cal-title"></div>
+      <button class="cal-nav" onclick="calMove(1)">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div class="search">🔍&nbsp;<input id="q" placeholder="일기 검색..." oninput="renderList()"></div>
+  <div class="filter-note" id="filter-note" style="display:none;">
+    <span id="filter-text"></span><button onclick="clearDayFilter()">전체 보기</button>
+  </div>
+  <div id="list"></div>
+  <button class="fab" onclick="go('edit')">✎</button>
+</div>
+
+<!-- 작성/수정 -->
+<div class="screen" id="scr-edit">
+  <div class="bar">
+    <button class="btn ghost small" onclick="history.back()">← 뒤로</button>
+    <button class="btn primary" onclick="saveEntry()">저장</button>
+  </div>
+  <div class="set-row"><input type="date" id="e-date" style="width:100%;"></div>
+  <div class="moods" id="e-moods"></div>
+  <input class="ttl" id="e-title" placeholder="제목 (선택)">
+  <div class="toolbar">
+    <button class="tb" onclick="wrapSel('**','**')"><b>굵게</b></button>
+    <button class="tb" onclick="wrapSel('*','*')"><i>기울임</i></button>
+    <button class="tb" onclick="linePrefix('## ')">제목</button>
+    <button class="tb" onclick="linePrefix('- ')">목록</button>
+    <button class="tb" onclick="linePrefix('> ')">인용</button>
+  </div>
+  <textarea class="body" id="e-body" placeholder="오늘은 어떤 하루였나요?&#10;&#10;마크다운을 쓸 수 있어요. **굵게**, *기울임*, - 목록 ..."></textarea>
+  <div class="live-label" id="e-live-label" style="display:none;">아래처럼 저장돼요 ✨</div>
+  <div class="md" id="e-live" style="display:none;"></div>
+</div>
+
+<!-- 보기 -->
+<div class="screen" id="scr-view">
+  <div class="bar">
+    <button class="btn ghost small" onclick="history.back()">← 뒤로</button>
+    <div>
+      <button class="btn ghost small" onclick="editCurrent()">수정</button>
+      <button class="btn danger small" onclick="delCurrent()">삭제</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="view-date" id="v-date"></div>
+    <div class="view-title" id="v-title"></div>
+    <div class="view-mood" id="v-mood"></div>
+  </div>
+  <div class="md" id="v-body"></div>
+</div>
+
+<!-- 설정 -->
+<div class="screen" id="scr-settings">
+  <div class="bar">
+    <button class="btn ghost small" onclick="history.back()">← 뒤로</button>
+    <div style="font-family:'Noto Serif KR',serif; font-weight:bold;">설정</div>
+    <span style="width:64px;"></span>
+  </div>
+
+  <div class="card">
+    <div class="set-label">📊 나의 기록</div>
+    <div class="stat">
+      <div class="box"><div class="n" id="st-total">0</div><div class="l">전체 일기</div></div>
+      <div class="box"><div class="n" id="st-month">0</div><div class="l">이번 달</div></div>
+      <div class="box"><div class="n" id="st-streak">0</div><div class="l">연속 일수</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="set-label">🔒 비밀번호 잠금</div>
+    <div id="pw-status" class="notice" style="margin-bottom:8px;"></div>
+    <div class="set-row"><input type="password" id="s-pw-cur" placeholder="현재 비밀번호" style="display:none;"></div>
+    <div class="set-row"><input type="password" id="s-pw-new" placeholder="새 비밀번호"></div>
+    <div class="set-row"><input type="text" id="s-pw-hint" placeholder="비밀번호 힌트 (선택)"></div>
+    <button class="btn primary small" onclick="setPassword()">비밀번호 설정</button>
+    <button class="btn danger small" id="s-pw-remove" style="display:none;" onclick="removePassword()">잠금 해제</button>
+    <div class="notice">⚠️ 비밀번호를 잊으면 되찾을 수 없어요. 힌트를 꼭 남겨두세요.</div>
+  </div>
+
+  <div class="card">
+    <div class="set-label">💾 백업</div>
+    <button class="btn primary small" onclick="doBackup()">백업 파일 저장</button>
+    <div class="notice" id="backup-note">휴대폰의 Android/data/com.kim.diary/files/ 폴더에 JSON 파일로 저장됩니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="set-label">🔄 앱 업데이트</div>
+    <div class="notice">현재 코드 버전: v<span id="up-cur"></span></div>
+    <div class="notice" id="up-msg" style="min-height:18px;"></div>
+    <button class="btn primary small" onclick="checkUpdate(true)">지금 확인</button>
+    <button class="btn ghost small" onclick="resetRemote()">내장 버전으로 복원</button>
+  </div>
+
+  <div class="card">
+    <div class="set-label">📤 데이터 내보내기 / 가져오기</div>
+    <div class="set-row"><textarea id="s-io" rows="4" placeholder="여기에 내보낸 데이터가 표시되거나, 가져올 데이터를 붙여넣으세요."></textarea></div>
+    <button class="btn ghost small" onclick="exportData()">내보내기</button>
+    <button class="btn ghost small" onclick="importData()">가져오기</button>
+  </div>
+</div>
+
+<script>
+/* ============ 원격 업데이트 ============ */
+var APP_VER = 1;
+var UPDATE_BASE = 'https://raw.githubusercontent.com/kimst5418/daily-dairy/main/';
+
+/* ============ 데이터 ============ */
+var DB = { entries: [], settings: { pw: null, hint: '' } };
+var MOODS = ['😊','🥰','😌','😐','😢','😠','😴','🤔'];
+var locked = false;
+var calY, calM, selDay = null;
+var editingId = null, viewingId = null, editMood = MOODS[0];
+
+function bridge(){ return (typeof AndroidBridge !== 'undefined') ? AndroidBridge : null; }
+
+function loadDB(){
+  var raw = '';
+  try { if (bridge()) raw = bridge().load(); } catch(e){}
+  if (!raw) { try { raw = localStorage.getItem('diaryData') || ''; } catch(e){} }
+  if (raw) { try { var d = JSON.parse(raw); if (d && typeof d === 'object') DB = d; } catch(e){} }
+  if (!DB.entries) DB.entries = [];
+  if (!DB.settings) DB.settings = { pw: null, hint: '' };
+}
+function persist(){
+  var json = JSON.stringify(DB);
+  var ok = false;
+  try { if (bridge()) ok = bridge().save(json); } catch(e){}
+  try { localStorage.setItem('diaryData', json); } catch(e){}
+  return ok;
+}
+
+/* ============ SHA-256 ============ */
+function sha256(ascii){
+  function rightRotate(v, a){ return (v >>> a) | (v << (32 - a)); }
+  var mathPow = Math.pow, maxWord = mathPow(2, 32), result = '';
+  var words = [], asciiBitLength = ascii.length * 8;
+  var hash = sha256.h = sha256.h || [], k = sha256.k = sha256.k || [];
+  var primeCounter = k.length, isComposite = {};
+  for (var candidate = 2; primeCounter < 64; candidate++){
+    if (!isComposite[candidate]){
+      for (var i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
+    }
+  }
+  ascii += '\x80';
+  while (ascii.length % 64 - 56) ascii += '\x00';
+  for (i = 0; i < ascii.length; i++){
+    var j = ascii.charCodeAt(i);
+    if (j >> 8) return '';
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = ((asciiBitLength / maxWord) | 0);
+  words[words.length] = (asciiBitLength);
+  for (j = 0; j < words.length;){
+    var w = words.slice(j, j += 16), oldHash = hash;
+    hash = hash.slice(0, 8);
+    for (i = 0; i < 64; i++){
+      var w15 = w[i - 15], w2 = w[i - 2];
+      var a = hash[0], e = hash[4];
+      var temp1 = hash[7]
+        + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+        + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i]
+        + (w[i] = (i < 16) ? w[i] : (w[i - 16]
+            + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+            + w[i - 7]
+            + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) | 0);
+      var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+        + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(temp1 + temp2) | 0].concat(hash);
+      hash[4] = (hash[4] + temp1) | 0;
+    }
+    for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+  }
+  for (i = 0; i < 8; i++){
+    for (j = 3; j + 1; j--){
+      var b = (hash[i] >> (j * 8)) & 255;
+      result += ((b < 16) ? 0 : '') + b.toString(16);
+    }
+  }
+  return result;
+}
+function hashPw(pw){ return sha256(unescape(encodeURIComponent(pw))); }
+
+/* ============ 유틸 ============ */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function todayStr(){
+  var d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+}
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+var DOW = ['일','월','화','수','목','금','토'];
+function fmtDate(s){
+  var p = s.split('-');
+  var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+  return parseInt(p[0],10) + '년 ' + parseInt(p[1],10) + '월 ' + parseInt(p[2],10) + '일 (' + DOW[d.getDay()] + ')';
+}
+function stripMd(s){
+  return String(s||'').replace(/```[\s\S]*?```/g,' ')
+    .replace(/[#>*_`~\-\[\]!()]/g,'').replace(/\n+/g,' ').replace(/\s+/g,' ').trim();
+}
+function renderMd(s){
+  try { if (typeof marked !== 'undefined'){
+    if (marked.setOptions) marked.setOptions({ breaks:true, gfm:true, headerIds:false, mangle:false });
+    return (marked.parse ? marked.parse(s) : marked(s));
+  } } catch(e){}
+  return esc(s).replace(/\n/g,'<br>');
+}
+function findEntry(id){
+  for (var i = 0; i < DB.entries.length; i++) if (DB.entries[i].id === id) return DB.entries[i];
+  return null;
+}
+
+/* ============ 라우팅 (해시 기반, 안드로이드 뒤로가기 지원) ============ */
+function go(route){ location.hash = '#' + route; }
+function route(){
+  var h = location.hash.replace(/^#/, '') || 'home';
+  var parts = h.split('/');
+  var name = parts[0] || 'home';
+  var screens = ['home','edit','view','settings'];
+  if (screens.indexOf(name) < 0) name = 'home';
+  var i;
+  var all = document.querySelectorAll('.screen');
+  for (i = 0; i < all.length; i++) all[i].className = 'screen';
+  if (name === 'home'){ renderHome(); }
+  else if (name === 'edit'){ openEditor(parts[1] || null); }
+  else if (name === 'view'){ openView(parts[1]); }
+  else if (name === 'settings'){ openSettings(); }
+  $('scr-' + name).className = 'screen active';
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+/* ============ 잠금 ============ */
+function showLock(){
+  locked = true;
+  $('scr-lock').className = 'active';
+  $('lock-hint').textContent = '';
+  $('lock-pw').value = '';
+}
+function tryUnlock(){
+  var pw = $('lock-pw').value;
+  if (hashPw(pw) === DB.settings.pw){
+    locked = false;
+    $('scr-lock').className = '';
+    $('lock-pw').blur();
+  } else {
+    var h = DB.settings.hint ? ('힌트: ' + DB.settings.hint) : '다시 입력해 보세요.';
+    $('lock-hint').textContent = '비밀번호가 맞지 않아요. ' + h;
+    $('lock-pw').value = '';
+  }
+}
+
+/* ============ 홈 ============ */
+function renderHome(){
+  var t = new Date();
+  $('home-sub').textContent = t.getFullYear() + '년 ' + (t.getMonth()+1) + '월 ' + t.getDate() + '일 ' + DOW[t.getDay()] + '요일';
+  renderCal();
+  renderList();
+}
+function calMove(d){
+  calM += d;
+  if (calM < 0){ calM = 11; calY--; }
+  if (calM > 11){ calM = 0; calY++; }
+  renderCal();
+}
+function entriesByDay(){
+  var map = {};
+  for (var i = 0; i < DB.entries.length; i++){
+    var e = DB.entries[i];
+    if (!map[e.date]) map[e.date] = e;
+  }
+  return map;
+}
+function renderCal(){
+  $('cal-title').textContent = calY + '년 ' + (calM+1) + '월';
+  var first = new Date(calY, calM, 1).getDay();
+  var days = new Date(calY, calM + 1, 0).getDate();
+  var map = entriesByDay();
+  var today = todayStr();
+  var html = '';
+  var i;
+  for (i = 0; i < 7; i++) html += '<div class="cal-dow' + (i===0?' sun':'') + '">' + DOW[i] + '</div>';
+  for (i = 0; i < first; i++) html += '<div class="cal-cell dim"></div>';
+  for (var d = 1; d <= days; d++){
+    var ds = calY + '-' + pad2(calM+1) + '-' + pad2(d);
+    var cls = 'cal-cell';
+    if (ds === today) cls += ' today';
+    if (ds === selDay) cls += ' sel';
+    var e = map[ds];
+    var mark = e ? (e.mood || '·') : '';
+    html += '<div class="' + cls + '" onclick="pickDay(\'' + ds + '\')">'
+         + '<span class="d">' + d + '</span>'
+         + '<span class="m">' + mark + '</span></div>';
+  }
+  $('cal-grid').innerHTML = html;
+}
+function pickDay(ds){
+  selDay = (selDay === ds) ? null : ds;
+  renderCal(); renderList();
+}
+function clearDayFilter(){ selDay = null; renderCal(); renderList(); }
+function renderList(){
+  var q = ($('q').value || '').toLowerCase();
+  var items = DB.entries.slice();
+  items.sort(function(a,b){
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (b.created||0) - (a.created||0);
+  });
+  var out = [], i;
+  for (i = 0; i < items.length; i++){
+    var e = items[i];
+    if (selDay && e.date !== selDay) continue;
+    if (q && ((e.title||'') + ' ' + (e.body||'')).toLowerCase().indexOf(q) < 0) continue;
+    out.push(e);
+  }
+  var note = $('filter-note');
+  if (selDay){
+    note.style.display = 'flex';
+    $('filter-text').textContent = '📅 ' + fmtDate(selDay) + '의 일기';
+  } else note.style.display = 'none';
+  var html = '';
+  for (i = 0; i < out.length; i++){
+    var t = out[i];
+    html += '<div class="entry" onclick="go(\'view/' + t.id + '\')">'
+      + '<span class="mood">' + esc(t.mood || '') + '</span>'
+      + '<div class="date">' + fmtDate(t.date) + '</div>'
+      + '<div class="title">' + esc(t.title || '무제') + '</div>'
+      + '<div class="prev">' + esc(stripMd(t.body).slice(0, 80)) + '</div></div>';
+  }
+  if (!html){
+    html = '<div class="empty"><span class="big">🌿</span>'
+      + (q || selDay ? '조건에 맞는 일기가 없어요.' : '아직 일기가 없어요.<br>오른쪽 아래 ✎ 버튼으로 첫 일기를 써보세요!')
+      + '</div>';
+  }
+  $('list').innerHTML = html;
+}
+
+/* ============ 편집 ============ */
+function renderMoods(){
+  var html = '';
+  for (var i = 0; i < MOODS.length; i++){
+    html += '<button class="mood-opt' + (MOODS[i]===editMood?' sel':'') + '" onclick="setMood(\'' + MOODS[i] + '\')">' + MOODS[i] + '</button>';
+  }
+  $('e-moods').innerHTML = html;
+}
+function setMood(m){ editMood = m; renderMoods(); }
+function openEditor(id){
+  editingId = id;
+  var e = id ? findEntry(id) : null;
+  if (e){
+    $('e-date').value = e.date; $('e-title').value = e.title || '';
+    $('e-body').value = e.body || ''; editMood = e.mood || MOODS[0];
+  } else {
+    var draft = null;
+    try { draft = JSON.parse(localStorage.getItem('diaryDraft') || 'null'); } catch(ex){}
+    $('e-date').value = (draft && draft.date) || todayStr();
+    $('e-title').value = (draft && draft.title) || '';
+    $('e-body').value = (draft && draft.body) || '';
+    editMood = (draft && draft.mood) || MOODS[0];
+  }
+  renderMoods();
+  renderLive();
+}
+function renderLive(){
+  var v = $('e-body').value;
+  var show = !!v.trim();
+  $('e-live-label').style.display = show ? 'block' : 'none';
+  $('e-live').style.display = show ? 'block' : 'none';
+  if (show) $('e-live').innerHTML = renderMd(v);
+}
+function saveDraft(){
+  if (editingId) return;
+  try {
+    localStorage.setItem('diaryDraft', JSON.stringify({
+      date: $('e-date').value, title: $('e-title').value,
+      body: $('e-body').value, mood: editMood
+    }));
+  } catch(e){}
+}
+function wrapSel(a, b){
+  var t = $('e-body'), s = t.selectionStart, e = t.selectionEnd, v = t.value;
+  var mid = v.slice(s, e) || '내용';
+  t.value = v.slice(0, s) + a + mid + b + v.slice(e);
+  t.focus(); t.selectionStart = s + a.length; t.selectionEnd = s + a.length + mid.length;
+  saveDraft(); renderLive();
+}
+function linePrefix(p){
+  var t = $('e-body'), s = t.selectionStart, v = t.value;
+  var ls = v.lastIndexOf('\n', s - 1) + 1;
+  t.value = v.slice(0, ls) + p + v.slice(ls);
+  t.focus(); t.selectionStart = t.selectionEnd = s + p.length;
+  saveDraft(); renderLive();
+}
+function saveEntry(){
+  var date = $('e-date').value || todayStr();
+  var title = $('e-title').value.trim();
+  var body = $('e-body').value;
+  if (!title && !body.trim()){ alert('내용을 입력해 주세요 🙂'); return; }
+  var now = Date.now();
+  if (editingId){
+    var e = findEntry(editingId);
+    if (e){ e.date = date; e.title = title; e.body = body; e.mood = editMood; e.updated = now; }
+  } else {
+    DB.entries.push({ id: String(now), date: date, title: title, body: body,
+      mood: editMood, photos: [], created: now, updated: now });
+    try { localStorage.removeItem('diaryDraft'); } catch(ex){}
+  }
+  persist();
+  var id = editingId || String(now);
+  editingId = null;
+  location.replace('#view/' + id);
+}
+
+/* ============ 보기 ============ */
+function openView(id){
+  var e = findEntry(id);
+  if (!e){ go('home'); return; }
+  viewingId = id;
+  $('v-date').textContent = fmtDate(e.date);
+  $('v-title').textContent = e.title || '무제';
+  $('v-mood').textContent = e.mood || '';
+  $('v-body').innerHTML = renderMd(e.body || '');
+}
+function editCurrent(){ go('edit/' + viewingId); }
+function delCurrent(){
+  if (!confirm('이 일기를 삭제할까요?\n삭제하면 되돌릴 수 없어요.')) return;
+  for (var i = 0; i < DB.entries.length; i++){
+    if (DB.entries[i].id === viewingId){ DB.entries.splice(i, 1); break; }
+  }
+  persist();
+  history.back();
+}
+
+/* ============ 설정 ============ */
+function openSettings(){
+  $('st-total').textContent = DB.entries.length;
+  var tm = todayStr().slice(0, 7), c = 0, i;
+  var dayset = {};
+  for (i = 0; i < DB.entries.length; i++){
+    if (DB.entries[i].date.slice(0, 7) === tm) c++;
+    dayset[DB.entries[i].date] = 1;
+  }
+  $('st-month').textContent = c;
+  var streak = 0;
+  var d = new Date();
+  if (!dayset[todayStr()]) d.setDate(d.getDate() - 1);
+  while (true){
+    var ds = d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+    if (dayset[ds]){ streak++; d.setDate(d.getDate() - 1); } else break;
+  }
+  $('st-streak').textContent = streak;
+  var has = !!DB.settings.pw;
+  $('pw-status').textContent = has ? '현재 잠금이 켜져 있어요.' : '현재 잠금이 꺼져 있어요.';
+  $('s-pw-cur').style.display = has ? 'block' : 'none';
+  $('s-pw-remove').style.display = has ? 'inline-block' : 'none';
+  $('s-pw-cur').value = ''; $('s-pw-new').value = '';
+  $('s-pw-hint').value = DB.settings.hint || '';
+  $('s-io').value = '';
+  $('up-cur').textContent = APP_VER;
+}
+function setPassword(){
+  if (DB.settings.pw && hashPw($('s-pw-cur').value) !== DB.settings.pw){
+    alert('현재 비밀번호가 맞지 않아요.'); return;
+  }
+  var np = $('s-pw-new').value;
+  if (!np){ alert('새 비밀번호를 입력해 주세요.'); return; }
+  DB.settings.pw = hashPw(np);
+  DB.settings.hint = $('s-pw-hint').value.trim();
+  persist();
+  alert('비밀번호가 설정되었어요 🔒');
+  openSettings();
+}
+function removePassword(){
+  if (hashPw($('s-pw-cur').value) !== DB.settings.pw){
+    alert('현재 비밀번호가 맞지 않아요.'); return;
+  }
+  DB.settings.pw = null; DB.settings.hint = '';
+  persist();
+  alert('잠금이 해제되었어요.');
+  openSettings();
+}
+function setUpMsg(m){
+  var el = $('up-msg');
+  if (el) el.textContent = m;
+}
+function checkUpdate(manual){
+  try {
+    var last = parseInt(localStorage.getItem('lastUpCheck') || '0', 10);
+    if (!manual && Date.now() - last < 20 * 3600 * 1000) return;
+    localStorage.setItem('lastUpCheck', String(Date.now()));
+    if (manual) setUpMsg('확인 중...');
+    var x = new XMLHttpRequest();
+    x.open('GET', UPDATE_BASE + 'version.json?t=' + Date.now());
+    x.onload = function(){
+      try {
+        var j = JSON.parse(x.responseText);
+        if (j && j.ver > APP_VER) downloadUpdate(j, manual);
+        else if (manual) setUpMsg('지금이 최신 버전이에요 (v' + APP_VER + ')');
+      } catch(e){ if (manual) setUpMsg('버전 정보를 읽지 못했어요.'); }
+    };
+    x.onerror = function(){ if (manual) setUpMsg('연결하지 못했어요. 인터넷을 확인해 주세요.'); };
+    x.send();
+  } catch(e){}
+}
+function downloadUpdate(j, manual){
+  if (manual) setUpMsg('새 버전(v' + j.ver + ') 다운로드 중...');
+  var x = new XMLHttpRequest();
+  x.open('GET', UPDATE_BASE + (j.file || 'diary-app/assets/index.html') + '?t=' + Date.now());
+  x.onload = function(){
+    var html = x.responseText;
+    if (html && html.indexOf('APP_VER') >= 0 && html.indexOf('</html>') >= 0){
+      var ok = false;
+      try { if (bridge() && bridge().saveApp) ok = bridge().saveApp(html); } catch(e){}
+      setUpMsg(ok ? '✅ v' + j.ver + ' 다운로드 완료! 앱을 완전히 닫았다 다시 열면 적용돼요.'
+                  : '저장에 실패했어요.');
+    } else if (manual) setUpMsg('받은 파일이 올바르지 않아요.');
+  };
+  x.onerror = function(){ if (manual) setUpMsg('다운로드에 실패했어요.'); };
+  x.send();
+}
+function resetRemote(){
+  if (!confirm('다운로드한 업데이트를 지우고 APK에 내장된 버전으로 되돌릴까요?\n(일기 데이터는 그대로 유지돼요)')) return;
+  var ok = false;
+  try { if (bridge() && bridge().clearApp) ok = bridge().clearApp(); } catch(e){}
+  try { localStorage.removeItem('lastUpCheck'); } catch(e){}
+  alert(ok ? '복원했어요. 앱을 완전히 닫았다 다시 열면 적용돼요.' : '지울 파일이 없거나 실패했어요.');
+}
+function doBackup(){
+  var d = new Date();
+  var name = '일기백업-' + d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate())
+    + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.json';
+  var path = '';
+  try { if (bridge()) path = bridge().backup(name, JSON.stringify(DB)); } catch(e){}
+  $('backup-note').textContent = path ? ('저장 완료! 📁 ' + path) : '백업에 실패했어요. 대신 아래 내보내기를 사용해 보세요.';
+}
+function exportData(){
+  var io = $('s-io');
+  io.value = JSON.stringify(DB);
+  io.focus(); io.select();
+  try { document.execCommand('copy'); alert('데이터를 복사했어요. 메모장 등에 붙여넣어 보관하세요.'); } catch(e){}
+}
+function importData(){
+  var v = $('s-io').value.trim();
+  if (!v){ alert('가져올 데이터를 붙여넣어 주세요.'); return; }
+  try {
+    var d = JSON.parse(v);
+    if (!d || !d.entries) throw new Error('bad');
+    if (!confirm('현재 데이터를 가져온 데이터로 바꿀까요?\n(일기 ' + d.entries.length + '개)')) return;
+    DB = d;
+    if (!DB.settings) DB.settings = { pw: null, hint: '' };
+    persist();
+    alert('가져오기 완료!');
+    openSettings();
+  } catch(e){ alert('데이터 형식이 올바르지 않아요.'); }
+}
+
+/* ============ 시작 ============ */
+function init(){
+  loadDB();
+  var t = new Date();
+  calY = t.getFullYear(); calM = t.getMonth();
+  var inputs = ['e-date','e-title','e-body'];
+  for (var i = 0; i < inputs.length; i++){
+    $(inputs[i]).addEventListener('input', saveDraft);
+  }
+  $('e-body').addEventListener('input', renderLive);
+  $('lock-pw').addEventListener('keydown', function(ev){ if (ev.key === 'Enter') tryUnlock(); });
+  if (DB.settings.pw) showLock();
+  if (!location.hash) location.replace('#home');
+  route();
+  setTimeout(function(){ checkUpdate(false); }, 3000);
+}
+init();
+</script>
+</body>
+</html>
