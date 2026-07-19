@@ -243,7 +243,7 @@ textarea.body{width:100%; min-height:34vh; border:1px solid var(--line); backgro
 
 <script>
 /* ============ 원격 업데이트 ============ */
-var APP_VER = 1;
+var APP_VER = 2;
 var UPDATE_BASE = 'https://raw.githubusercontent.com/kimst5418/daily-dairy/main/';
 
 /* ============ 데이터 ============ */
@@ -709,6 +709,13 @@ function init(){
   }
   $('e-body').addEventListener('input', renderLive);
   $('lock-pw').addEventListener('keydown', function(ev){ if (ev.key === 'Enter') tryUnlock(); });
+  // [v2 임시조치] 비밀번호 분실 시 1회 초기화 — 앱 진입 후 설정에서 새 비밀번호를 걸면 됨
+  try {
+    if (!localStorage.getItem('pwReset_v2')){
+      localStorage.setItem('pwReset_v2', '1');
+      if (DB.settings.pw){ DB.settings.pw = null; DB.settings.hint = ''; persist(); }
+    }
+  } catch(e){}
   if (DB.settings.pw) showLock();
   if (!location.hash) location.replace('#home');
   route();
